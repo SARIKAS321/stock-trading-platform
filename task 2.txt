@@ -1,0 +1,220 @@
+import java.util.*;
+import java.io.*;
+import java.time.LocalDateTime;
+
+// ---------- STOCK CLASS ----------
+class Stock {
+    private String symbol;
+    private double price;
+
+    public Stock(String symbol, double price) {
+        this.symbol = symbol;
+        this.price = price;
+    }
+
+    public String getSymbol() {
+        return symbol;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+}
+
+// ---------- TRANSACTION CLASS ----------
+class Transaction {
+    private String stockSymbol;
+    private int quantity;
+    private double price;
+    private String type;
+    private LocalDateTime date;
+
+    public Transaction(String stockSymbol, int quantity, double price, String type) {
+        this.stockSymbol = stockSymbol;
+        this.quantity = quantity;
+        this.price = price;
+        this.type = type;
+        this.date = LocalDateTime.now();
+    }
+
+    @Override
+    public String toString() {
+        return type + " | " + stockSymbol +
+                " | Qty: " + quantity +
+                " | Price: $" + price +
+                " | Date: " + date;
+    }
+}
+
+// ---------- PORTFOLIO CLASS ----------
+class Portfolio implements Serializable {
+    private Map<String, Integer> holdings = new HashMap<>();
+    private List<Transaction> transactions = new ArrayList<>();
+
+    public void buyStock(String symbol, int quantity, double price) {
+        holdings.put(symbol, holdings.getOrDefault(symbol, 0) + quantity);
+        transactions.add(new Transaction(symbol, quantity, price, "BUY"));
+    }
+
+    public void sellStock(String symbol, int quantity, double price) {
+        if (!holdings.containsKey(symbol) || holdings.get(symbol) < quantity) {
+            System.out.println("Not enough shares to sell.");
+            return;
+        }
+
+        holdings.put(symbol, holdings.get(symbol) - quantity);
+        transactions.add(new Transaction(symbol, quantity, price, "SELL"));
+    }
+
+    public void displayPortfolio(Map<String, Stock> market) {
+        System.out.println("\n===== PORTFOLIO SUMMARY =====");
+        double totalValue = 0;
+
+        for (String symbol : holdings.keySet()) {
+            int qty = holdings.get(symbol);
+            double price = market.get(symbol).getPrice();
+            double value = qty * price;
+            totalValue += value;
+
+            System.out.println(symbol + " | Shares: " + qty + " | Value: $" + value);
+        }
+
+        System.out.println("Total Portfolio Value: $" + totalValue);
+    }
+
+    public void displayTransactions() {
+        System.out.println("\n===== TRANSACTION HISTORY =====");
+        for (Transaction t : transactions) {
+            System.out.println(t);
+        }
+    }
+
+    public void saveToFile() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("portfolio.dat"))) {
+            oos.writeObject(this);
+            System.out.println("Portfolio saved successfully.");
+        } catch (IOException e) {
+            System.out.println("Error saving portfolio.");
+        }
+    }
+}
+
+// ---------- USER CLASS ----------
+class User {
+    private String name;
+    private Portfolio portfolio;
+
+    public User(String name) {
+        this.name = name;
+        this.portfolio = new Portfolio();
+    }
+
+    public Portfolio getPortfolio() {
+        return portfolio;
+    }
+}
+
+// ---------- STOCK MARKET CLASS ----------
+class StockMarket {
+    Map<String, Stock> stocks = new HashMap<>();
+
+    public StockMarket() {
+        stocks.put("AAPL", new Stock("AAPL", 180.0));
+        stocks.put("GOOG", new Stock("GOOG", 140.0));
+        stocks.put("TSLA", new Stock("TSLA", 250.0));
+        stocks.put("AMZN", new Stock("AMZN", 130.0));
+    }
+
+    public void displayMarket() {
+        System.out.println("\n===== MARKET DATA =====");
+        for (Stock s : stocks.values()) {
+            System.out.println(s.getSymbol() + " : $" + s.getPrice());
+        }
+    }
+
+    public Stock getStock(String symbol) {
+        return stocks.get(symbol);
+    }
+}
+
+// ---------- MAIN CLASS ----------
+public class StockTradingPlatform {
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        StockMarket market = new StockMarket();
+
+        System.out.print("Enter user name: ");
+        User user = new User(scanner.nextLine());
+
+        while (true) {
+            System.out.println("\n===== STOCK TRADING PLATFORM =====");
+            System.out.println("1. View Market Data");
+            System.out.println("2. Buy Stock");
+            System.out.println("3. Sell Stock");
+            System.out.println("4. View Portfolio");
+            System.out.println("5. View Transactions");
+            System.out.println("6. Save Portfolio");
+            System.out.println("7. Exit");
+            System.out.print("Choose an option: ");
+
+            int choice = scanner.nextInt();
+
+            switch (choice) {
+                case 1:
+                    market.displayMarket();
+                    break;
+
+                case 2:
+                    market.displayMarket();
+                    System.out.print("Enter stock symbol: ");
+                    String buySymbol = scanner.next();
+                    System.out.print("Enter quantity: ");
+                    int buyQty = scanner.nextInt();
+
+                    Stock buyStock = market.getStock(buySymbol);
+                    if (buyStock != null) {
+                        user.getPortfolio().buyStock(buySymbol, buyQty, buyStock.getPrice());
+                        System.out.println("Stock purchased successfully.");
+                    } else {
+                        System.out.println("Invalid stock symbol.");
+                    }
+                    break;
+
+                case 3:
+                    System.out.print("Enter stock symbol: ");
+                    String sellSymbol = scanner.next();
+                    System.out.print("Enter quantity: ");
+                    int sellQty = scanner.nextInt();
+
+                    Stock sellStock = market.getStock(sellSymbol);
+                    if (sellStock != null) {
+                        user.getPortfolio().sellStock(sellSymbol, sellQty, sellStock.getPrice());
+                    } else {
+                        System.out.println("Invalid stock symbol.");
+                    }
+                    break;
+
+                case 4:
+                    user.getPortfolio().displayPortfolio(market.stocks);
+                    break;
+
+                case 5:
+                    user.getPortfolio().displayTransactions();
+                    break;
+
+                case 6:
+                    user.getPortfolio().saveToFile();
+                    break;
+
+                case 7:
+                    System.out.println("Thank you for using the Stock Trading Platform!");
+                    scanner.close();
+                    return;
+
+                default:
+                    System.out.println("Invalid option.");
+            }
+        }
+    }
+}
